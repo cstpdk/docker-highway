@@ -1,4 +1,4 @@
-.PHONY: build run run-main run-etcd run-proxy run-dnsmasq stop
+.PHONY: build run run-main run-etcd run-proxy run-dnsmasq
 
 RUN_CMD := sh -c 'go install && app $$ETCD_PORT_4001_TCP_ADDR:$$ETCD_PORT_4001_TCP_PORT'
 
@@ -32,7 +32,7 @@ run-proxy:
 		-c 'confd -node=$$ETCD_PORT_4001_TCP_ADDR:$$ETCD_PORT_4001_TCP_PORT -interval=1'
 
 run-main:
-	docker run -it -v `pwd`:/go/src/app --link etcd:etcd \
+	docker run -d -v `pwd`:/go/src/app --link etcd:etcd \
 		-v /var/run/docker.sock:/var/run/docker.sock \
 		`basename $(shell pwd)` $(RUN_CMD)
 
