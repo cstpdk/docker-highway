@@ -16,7 +16,8 @@ run-dnsmasq:
 	docker run -d --name dnsmasq -p 53:53/udp -p 53:53 cstpdk/dnsmasq
 
 run-etcd:
-	docker run --name etcd -d -h etcd quay.io/coreos/etcd:v2.0.0 \
+	docker run --name etcd -d -h etcd -p 172.17.42.1::4001 \
+		quay.io/coreos/etcd:v2.0.0 \
 		--listen-client-urls http://etcd:4001 \
 		--advertise-client-urls http://etcd:4001
 	until docker run --link etcd:etcd --rm speg03/curl \
