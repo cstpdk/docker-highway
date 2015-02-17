@@ -20,8 +20,8 @@ run-etcd:
 		quay.io/coreos/etcd:v2.0.0 \
 		--listen-client-urls http://etcd:4001 \
 		--advertise-client-urls http://etcd:4001
-	until docker run --link etcd:etcd --rm speg03/curl \
-		etcd -L http://etcd:4001/v2/keys/config -XPUT \
+	until docker run --link etcd:etcd --rm speg03/curl -s \
+		-L http://etcd:4001/v2/keys/config -XPUT \
 		-d dir=true ; do \
 		sleep 0.1 ; \
 	done
