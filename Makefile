@@ -12,6 +12,8 @@ build: .built
 
 run: run-etcd run-proxy run-dnsmasq run-main
 
+run-with-ssl: run-etcd run-proxy-with-ssl run-dnsmasq run-main
+
 run-dnsmasq:
 	docker run -d --name dnsmasq -p 53:53/udp -p 53:53 cstpdk/dnsmasq
 
@@ -27,12 +29,24 @@ run-etcd:
 	done
 
 run-proxy:
-	docker run -d -p 80:80 --name proxy --entrypoint sh \
+	docker run -d -p 80:80 -p 443:443 --name proxy --entrypoint sh \
 		--link etcd:etcd cstpdk/haproxy-confd \
 		-c 'confd -node=$$ETCD_PORT_4001_TCP_ADDR:$$ETCD_PORT_4001_TCP_PORT -interval=1'
 
+run-proxy-with-ssl:
+	docker run -d -p 80:80 -p 443:443 --name proxy --entrypoint sh \
+		-v $(shell pwd)/keys:/keys \
+		--link etcd:etcd cstpdk/haproxy-confd:ssl \
+		-c 'confd -node=$$ETCD_PORT_4001_TCP_ADDR:$$ETCD_PORT_4001_TCP_PORT -interval=1'
+	docker run --link etcd:etcd --rm speg03/curl -s \
+		-L http://etcd:4001/v2/keys/config/services -XPUT -d dir=true 
+	docker run --link etcd:etcd --rm speg03/curl -s \
+		-L http://etcd:4001/v2/keys/config/services/ssl_support \
+		-XPUT -d value=true
+
 run-main:
 	docker run -d -v `pwd`:/go/src/app --link etcd:etcd \
+		--name `basename $(shell pwd)` \
 		-v /var/run/docker.sock:/var/run/docker.sock \
 		`basename $(shell pwd)` $(RUN_CMD)
 
