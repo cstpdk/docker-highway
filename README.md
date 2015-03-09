@@ -12,7 +12,7 @@ Well, it's not certain that you do. This switches the usual linking
 between docker containers for an off-brand etcd backed solutions.
 
 This allows you to not worry about linking between containers, but
-instead of $linkname_PORT_xyz_TCP_ADDR:$linkname_PORT_xyz_TCP_PORT 
+instead of \$linkname_PORT_xyz_TCP_ADDR:\$linkname_PORT_xyz_TCP_PORT 
 can say container_name.local. It also enables you to continue this
 practice for containers running on non-local machines.
 
