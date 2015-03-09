@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"flag"
 	"fmt"
 	"github.com/coreos/go-etcd/etcd"
 	"io/ioutil"
@@ -9,7 +10,6 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"time"
-	"flag"
 )
 
 type Container struct {
@@ -54,14 +54,14 @@ func (ee *EtcdHostEntry) fromContainer(container Container) *EtcdHostEntry {
 func (ee *EtcdHostEntry) saveOrUpdate(conn *etcd.Client) {
 	_, err := conn.Set(fmt.Sprintf("/services/%s/hosts/%d", ee.ServiceName,
 		ee.HostNumber),
-		ee.HostValue, 0)
+		ee.HostValue, 30)
 
 	handleError(err)
 
-	_, err = conn.Set(fmt.Sprintf("/services/%s/scheme", ee.ServiceName),
-		ee.Scheme, 0)
+	// Only suceeds if not already existant
+	conn.Create(fmt.Sprintf("/services/%s/scheme", ee.ServiceName), ee.Scheme, 0)
 
-	handleError(err)
+	// TODO handle error if not "already exists"
 }
 
 func handleError(err error) {
@@ -70,23 +70,23 @@ func handleError(err error) {
 	}
 }
 
-func get(dockerConn *httputil.ClientConn, path string) ([]byte, error){
+func get(dockerConn *httputil.ClientConn, path string) ([]byte, error) {
 
-		req, err := http.NewRequest("GET", path, nil)
-		handleError(err)
+	req, err := http.NewRequest("GET", path, nil)
+	handleError(err)
 
-		resp, err := dockerConn.Do(req)
-		handleError(err)
+	resp, err := dockerConn.Do(req)
+	handleError(err)
 
-		body, err := ioutil.ReadAll(resp.Body)
-		defer resp.Body.Close()
+	body, err := ioutil.ReadAll(resp.Body)
+	defer resp.Body.Close()
 
-		return body, err
+	return body, err
 }
 
 func listenForContainers(dockerConn *httputil.ClientConn, etcdConn *etcd.Client) {
 	for {
-		body, err := get(dockerConn,"/containers/json")
+		body, err := get(dockerConn, "/containers/json")
 		handleError(err)
 
 		containers := []Container{}
@@ -110,9 +110,8 @@ func main() {
 	dockerConn := httputil.NewClientConn(dial, nil)
 	defer dockerConn.Close()
 
-
 	flag.Parse()
-	endpoint := fmt.Sprintf("http://%s",flag.Arg(0))
+	endpoint := fmt.Sprintf("http://%s", flag.Arg(0))
 	etcdConn := etcd.NewClient([]string{endpoint})
 
 	listenForContainers(dockerConn, etcdConn)
