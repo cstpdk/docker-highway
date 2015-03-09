@@ -9,6 +9,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/httputil"
+	"strings"
 	"time"
 )
 
@@ -32,18 +33,30 @@ type Port struct {
 type EtcdHostEntry struct {
 	Scheme      string
 	ServiceName string
-	HostNumber  int
+	HostName    string //Name of this instance, like /services/ServiceName/HostName
 	HostValue   string
 	HostPort    int
 }
 
 func (ee *EtcdHostEntry) fromContainer(container Container) *EtcdHostEntry {
 
-	ee.ServiceName = container.Names[0]
+	// We split on "_" to allow for several containers with same name to run
+	name_tokens := strings.Split(container.Names[0], "_")
+
+	// Everything before "_" is the name
+	ee.ServiceName = name_tokens[0]
+
+	if len(name_tokens) > 1 {
+		// If there is more to the name, use that
+		ee.HostName = name_tokens[1]
+	} else {
+		ee.HostName = "1"
+	}
+
+	// Http is the default, can be overriden without being updated
 	ee.Scheme = "http"
 
 	if len(container.Ports) > 0 {
-		ee.HostNumber = 1
 		ee.HostValue = fmt.Sprintf("%s:%d", container.Ports[0].IP,
 			container.Ports[0].PublicPort)
 	}
@@ -52,8 +65,8 @@ func (ee *EtcdHostEntry) fromContainer(container Container) *EtcdHostEntry {
 }
 
 func (ee *EtcdHostEntry) saveOrUpdate(conn *etcd.Client) {
-	_, err := conn.Set(fmt.Sprintf("/services/%s/hosts/%d", ee.ServiceName,
-		ee.HostNumber),
+	_, err := conn.Set(fmt.Sprintf("/services/%s/hosts/%s", ee.ServiceName,
+		ee.HostName),
 		ee.HostValue, 30)
 
 	handleError(err)
